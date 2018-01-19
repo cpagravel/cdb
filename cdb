@@ -1,0 +1,65 @@
+#http://blog.angeloff.name/post/2010/08/29/cd-with-bookmarks-and-auto-completion-for-zsh/
+CDB_BOOKMARKS="/home/cgravel/.cdbookmarks"
+
+function showMarks()
+{
+  awk 'BEGIN {count=1} {print count ". " $1 "\t" $2; count++;}' "$CDB_BOOKMARKS"
+}
+
+function cdb()
+{
+  local OPTIND
+  BOOKMARK_PATHS=($(awk '{print $2}' "$CDB_BOOKMARKS"))
+  SELECT_NUM=$(echo "$1" | grep -oP '^(\d+)$')
+
+  while getopts ":d:" opt; do
+    case "${opt}" in
+    d)
+      CLEANED_TEXT=$(sed -e "${OPTARG}d;" "$CDB_BOOKMARKS")
+      if [[ $CLEANED_TEXT != "" ]]; then
+        echo "$CLEANED_TEXT" > "$CDB_BOOKMARKS"
+        showMarks
+      fi
+      ;;
+    esac
+  done
+
+  if [ "$1" == "" ]; then
+    showMarks
+  elif [ "$SELECT_NUM" != "" ]; then
+    COUNT=$(expr "${#BOOKMARK_PATHS[@]}" + 1)
+    INDEX=$(expr "$SELECT_NUM" - 1)
+    if [ "$SELECT_NUM" -le "${#BOOKMARK_PATHS[@]}" ]; then
+      cd "${BOOKMARK_PATHS[$INDEX]}"
+    else
+      echo "Invalid selection, unable to reference";
+    fi
+  else
+    INDEX=$(awk -v srch="$1" 'BEGIN{match_found=-1; index_of=0;} {if ($1==srch) {match_found=index_of;} index_of++;} END{print match_found}' "$CDB_BOOKMARKS")
+    if [[ $INDEX -le "${#BOOKMARK_PATHS[@]}" ]]; then
+      cd "${BOOKMARK_PATHS[$INDEX]}"
+    fi
+  fi # SELECT_NUM
+  OPTIND=1
+}
+
+function cdb_edit() {
+  vim $CDB_BOOKMARKS
+}
+
+function mark()
+{
+  if [ $# == 0 ]; then
+    DIR_NAME=$(basename ${PWD})
+  else
+    DIR_NAME=$1
+  fi
+  echo -e "$DIR_NAME\t${PWD}" >> "$CDB_BOOKMARKS"
+}
+
+function _cdb () {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    COMPREPLY=( $(compgen -W "`awk '{print $1}' "$CDB_BOOKMARKS"`" -- ${cur}) )
+}
+
+complete -o default -o nospace -F _cdb cdbScripts
