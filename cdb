@@ -1,4 +1,5 @@
 #http://blog.angeloff.name/post/2010/08/29/cd-with-bookmarks-and-auto-completion-for-zsh/
+touch "$HOME/.cdbookmarks"
 CDB_BOOKMARKS="$HOME/.cdbookmarks"
 
 function showMarks()
